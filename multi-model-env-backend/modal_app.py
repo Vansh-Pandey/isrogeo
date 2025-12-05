@@ -26,6 +26,11 @@ def activate_env(env_dir):
 backend_image = (
     modal.Image.debian_slim(python_version="3.11")
     .pip_install(
+        "torch==2.1.2",
+        "torchvision==0.16.2",
+        "torchaudio==2.1.2",
+        "transformers==4.36.2",
+        "numpy<2",   # IMPORTANT FIX FOR torch
         "annotated-doc==0.0.4",
         "annotated-types==0.7.0",
         "anyio==4.11.0",
@@ -53,9 +58,14 @@ backend_image = (
         "typing_extensions==4.15.0",
         "typing-inspection==0.4.2",
         "uvicorn==0.38.0",
-        "openai"
+        "openai",
+        "requests",
+        "pillow"
     )
+    .add_local_dir("src", remote_path="/root/src")
 )
+
+
 
 # -------- ZIP MODEL ENV IMAGES ---------
 caption_image = (

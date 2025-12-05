@@ -142,9 +142,9 @@ The AI model environments are packaged as zip files hosted on Google Drive. Down
 
 | Environment | Size | Description | Download Link |
 |-------------|------|-------------|---------------|
-| **captioning.zip** | ~2-3GB | Florence-2 caption model + dependencies | [PASTE_YOUR_GOOGLE_DRIVE_LINK_1] |
-| **vqa.zip** | ~2-3GB | Florence-2 VQA model + dependencies | [PASTE_YOUR_GOOGLE_DRIVE_LINK_2] |
-| **grounding.zip** | ~15-20GB | GeoGround + YOLO models + dependencies | [PASTE_YOUR_GOOGLE_DRIVE_LINK_3] |
+| **captioning.zip** | ~2-3GB | Florence-2 caption model + dependencies | [https://drive.google.com/file/d/1m5_0T5x0gU8L_-QmVQ3_Yw4TwXnqYvY_/view?usp=sharing] |
+| **vqa.zip** | ~2-3GB | Florence-2 VQA model + dependencies | [https://drive.google.com/file/d/1W2GnF8EPBvts3VMXzHWyjvtIuWv-eP4O/view?usp=sharing] |
+| **grounding.zip** | ~15-20GB | GeoGround + YOLO models + dependencies | [https://drive.google.com/file/d/1V6Nuy3jiPwtSQqVaGevzH4p9XPK3ibrG/view?usp=sharing] |
 
 #### **Method 1: Using `gdown` (Recommended)**
 
