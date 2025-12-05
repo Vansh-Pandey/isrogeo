@@ -95,48 +95,262 @@ grounding_image = (
 )
 
 
+@app.function(
+    image=caption_image,
+    gpu="A100",
+    timeout=300,
+    memory=4096
+)
 
-
-# ---------- MODEL FUNCTIONS -------------
-@app.function(image=caption_image)
-def run_caption(image_path: str):
+def run_caption(image_path: str, max_tokens: int = 512, temperature: float = 0.7):
+    """
+    Generate caption using Florence-2 Caption Service
+    
+    Args:
+        image_path: Path to image file
+        max_tokens: Maximum tokens to generate
+        temperature: Sampling temperature
+        
+    Returns:
+        {"caption": "Generated caption text"}
+    """
+    print(f"📝 Caption Service - Processing: {image_path}")
+    
+    # Activate caption environment
     activate_env("/captioning_env")
+    
+    # Import service from activated environment
     from src.services.florence2_caption_service import get_caption_service
-    return get_caption_service().generate_caption(image_path)
+    
+    try:
+        # Get caption service (singleton)
+        service = get_caption_service()
+        
+        # Generate caption
+        caption = service.generate_caption(
+            image=image_path,
+            max_new_tokens=max_tokens,
+            temperature=temperature
+        )
+        
+        print(f"✅ Caption generated: {caption[:100]}...")
+        return {"caption": caption}
+        
+    except Exception as e:
+        print(f"❌ Caption error: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"error": str(e), "caption": "Failed to generate caption"}
 
-@app.function(image=vqa_image)
-def run_vqa(image_path: str, question: str):
+
+@app.function(
+    image=vqa_image,
+    gpu="A100",
+    timeout=300,
+    memory=4096
+)
+
+def run_vqa(image_path: str, question: str, max_tokens: int = 128, temperature: float = 0.7):
+    """
+    Answer question using Florence-2 VQA Service
+    
+    Args:
+        image_path: Path to image file
+        question: Question to answer
+        max_tokens: Maximum tokens to generate
+        temperature: Sampling temperature
+        
+    Returns:
+        {"answer": "Answer text"}
+    """
+    print(f"❓ VQA Service - Question: {question}")
+    
+    # Activate VQA environment
     activate_env("/vqa_env")
+    
+    # Import service from activated environment
     from src.services.florence2_vqa_service import get_vqa_service
-    return get_vqa_service().answer_question(image_path, question)
+    
+    try:
+        # Get VQA service (singleton)
+        service = get_vqa_service()
+        
+        # Answer question
+        answer = service.answer_question(
+            image=image_path,
+            question=question,
+            max_new_tokens=max_tokens,
+            temperature=temperature
+        )
+        
+        print(f"✅ Answer: {answer}")
+        return {"answer": answer}
+        
+    except Exception as e:
+        print(f"❌ VQA error: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"error": str(e), "answer": "Failed to answer question"}
 
-@app.function(image=grounding_image, gpu="A10G")
-def run_grounding(image_path: str, query: str):
+
+@app.function(
+    image=grounding_image,
+    gpu="A100",  # Use A100 for grounding
+    timeout=600,
+    memory=16384
+)
+def run_grounding(image_path: str, query: str, max_boxes: int = 10):
+    """
+    Detect objects using GeoGround Service
+    
+    Args:
+        image_path: Path to image file
+        query: Natural language query
+        max_boxes: Maximum boxes to return
+        
+    Returns:
+        {"detections": [{"object_id": "1", "obbox": [...]}]}
+    """
+    print(f"🎯 Grounding Service - Query: {query}")
+    
+    # Activate grounding environment
     activate_env("/grounding_env")
+    
+    # Import service from activated environment
     from src.services.grounding_service import get_grounding_service
-    return get_grounding_service().detect_objects(image_path, query)
+    
+    try:
+        # Get grounding service (singleton)
+        service = get_grounding_service()
+        
+        # Detect objects - returns List[Tuple[str, List[float]]]
+        detections = service.detect_objects(
+            image=image_path,
+            query=query,
+            max_boxes=max_boxes
+        )
+        
+        # Format detections to match API response
+        formatted_detections = [
+            {
+                "object_id": obj_id,
+                "obbox": obbox
+            }
+            for obj_id, obbox in detections
+        ]
+        
+        print(f"✅ Detected {len(formatted_detections)} objects")
+        return {"detections": formatted_detections}
+        
+    except Exception as e:
+        print(f"❌ Grounding error: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"error": str(e), "detections": []}
 
-# ---------- SIMPLE ROUTER (OPTIONAL) -------------
+
+# ========================================================================================
+# SIMPLE ROUTER ENDPOINT (For direct service calls)
+# ========================================================================================
+
 @app.function(image=backend_image)
 @modal.fastapi_endpoint(method="POST")
 def router(request: dict):
+    """
+    Simple router for individual service calls
+    
+    Request format:
+    {
+        "service": "caption" | "vqa" | "grounding",
+        "image": "path/to/image.jpg",
+        "query": "question or query text",  // For VQA and Grounding
+        "max_tokens": 512,  // Optional
+        "temperature": 0.7,  // Optional
+        "max_boxes": 10  // Optional for grounding
+    }
+    
+    Returns:
+        Service-specific response
+    """
     service = request.get("service")
     image = request.get("image")
-    query = request.get("query")
-
+    query = request.get("query", "")
+    max_tokens = request.get("max_tokens", 512)
+    temperature = request.get("temperature", 0.7)
+    max_boxes = request.get("max_boxes", 10)
+    
+    print(f"\n🔀 Router - Service: {service}")
+    
     if service == "caption":
-        return run_caption.remote(image)
+        return run_caption.remote(image, max_tokens, temperature)
+    
     elif service == "vqa":
-        return run_vqa.remote(image, query)
+        if not query:
+            return {"error": "Query/question is required for VQA"}
+        return run_vqa.remote(image, query, max_tokens, temperature)
+    
     elif service == "grounding":
-        return run_grounding.remote(image, query)
+        if not query:
+            return {"error": "Query is required for grounding"}
+        return run_grounding.remote(image, query, max_boxes)
+    
     else:
-        return {"error": "Unknown service. Choose: caption / vqa / grounding"}
+        return {
+            "error": "Unknown service. Choose: caption / vqa / grounding",
+            "available_services": ["caption", "vqa", "grounding"]
+        }
 
 
-# ---------- RUN BACKEND FASTAPI VIA MODAL ----------
-@app.function(image=backend_image)
-@asgi_app()
-def backend():
+# ========================================================================================
+# FASTAPI BACKEND (Complete GeoNLI Evaluation)
+# ========================================================================================
+
+@app.function(
+    image=backend_image,
+    timeout=600,
+    memory=2048
+)
+@modal.asgi_app()
+def fastapi_backend():
+    """
+    Complete FastAPI backend with GeoNLI evaluation endpoint
+    
+    This hosts the full backend including:
+    - Authentication
+    - Session management
+    - GeoNLI evaluation endpoint
+    - All other API endpoints
+    """
+    print("🚀 Starting FastAPI backend...")
+    
+    # Set Modal environment flag
+    os.environ["MODAL_ENV"] = "true"
+    
+    # Import FastAPI app
     from src.server import app as fastapi_app
+    
+    print("✅ FastAPI backend ready")
     return fastapi_app
+
+
+# ========================================================================================
+# HEALTH CHECK
+# ========================================================================================
+
+@app.function(image=backend_image)
+@modal.fastapi_endpoint(method="GET")
+def health():
+    """Health check endpoint"""
+    import torch
+    
+    return {
+        "status": "healthy",
+        "service": "GeoNLI Multi-Model Backend",
+        "environment": "Modal",
+        "cuda_available": torch.cuda.is_available(),
+        "services": {
+            "caption": "available",
+            "vqa": "available",
+            "grounding": "available (A100)"
+        }
+    }
