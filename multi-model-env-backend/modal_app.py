@@ -22,15 +22,13 @@ def activate_env(env_dir):
                         return site_packages
     raise RuntimeError(f"❌ Could not locate site-packages inside env: {env_dir}")
 
-# --------- BACKEND IMAGE (FASTAPI) ----------
 backend_image = (
     modal.Image.debian_slim(python_version="3.11")
+    .apt_install(
+        "libgl1",
+        "libglib2.0-0"
+    )
     .pip_install(
-        "torch==2.1.2",
-        "torchvision==0.16.2",
-        "torchaudio==2.1.2",
-        "transformers==4.36.2",
-        "numpy<2",   # IMPORTANT FIX FOR torch
         "annotated-doc==0.0.4",
         "annotated-types==0.7.0",
         "anyio==4.11.0",
@@ -60,10 +58,16 @@ backend_image = (
         "uvicorn==0.38.0",
         "openai",
         "requests",
-        "pillow"
+        "pillow",
+        "numpy<2",
+        "torch",
+        "transformers",
+        "peft",
+        "opencv-python"
     )
     .add_local_dir("src", remote_path="/root/src")
 )
+
 
 
 
