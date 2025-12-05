@@ -134,7 +134,7 @@ cd multi-model-env-backend
 
 ---
 
-### **Step 2: Download Model Environments**
+### **Step 2: Download Model Environments (if not already in the zip)**
 
 The AI model environments are packaged as zip files hosted on Google Drive. Download all three files:
 
