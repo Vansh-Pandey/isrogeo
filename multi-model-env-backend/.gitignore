@@ -13,7 +13,12 @@ dist-ssr
 *.local
 .env
 .venv
-sample_dataset_inter_iit_v1_3
+./backend/checkpoints/llava-v1.5-7b-task-geoground
+checkpoints
+__pycache__
+captioning.zip
+grounding.zip
+vqa.zip
 
 # Editor directories and files
 .vscode/*
